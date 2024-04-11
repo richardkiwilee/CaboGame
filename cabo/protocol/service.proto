@@ -1,0 +1,41 @@
+
+syntax = "proto3";
+
+package cabo;
+
+service CaboRoom {
+  rpc Register (GeneralRequest) returns (GeneralResponse) {}
+  rpc Handle (GeneralRequest) returns (GeneralResponse) {}
+  rpc Subscribe (GeneralRequest) returns (stream Broadcast) {}
+}
+
+message GeneralRequest {
+  string name = 1;
+  string msg = 2;
+}
+
+message GeneralResponse {
+  bool ok = 1;
+  string name = 2;
+  string msg = 3;
+}
+
+message Broadcast {
+  enum msgtype {
+    UNSPECIFIED = 0;
+    USER_JOIN = 1;
+    USER_LEAVE = 2;
+    USER_READY = 3;
+    GAME_START = 4;
+    GAME_END = 5;
+    NEW_ROUND = 6;
+    ROUND_END = 7;
+    PLAYER_TURN = 8;
+    PLAYER_ACTION = 9;
+    FAILURE = 127;
+  }
+  msgtype type = 1;
+  int32 seq = 2;
+  string name = 3;
+  string msg = 4;
+}
