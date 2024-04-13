@@ -1,5 +1,5 @@
-from .server import serve
-from .client import main
+from cabo.server import serve
+from cabo.client import main
 import threading
 
 
