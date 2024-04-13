@@ -6,9 +6,9 @@ from enum import Enum
 from rich.table import Table
 from rich.console import Console
 import cabo.protocol.service_pb2 as pb2
-NUMBER_peek = 8
-NUMBER_SPY = 9
-NUMBER_SWITCH = 10
+NUMBER_peek = [7, 8]
+NUMBER_SPY = [9, 10]
+NUMBER_SWITCH = [11, 12]
 
 _DEBUG = False
 
@@ -101,11 +101,11 @@ class Card:
 
     def print(self):
         print(f'{self.number}', end='')
-        if self.number == NUMBER_peek:
+        if self.number in NUMBER_peek:
             print('[ peek ]', end='')
-        if self.number == NUMBER_SPY:
+        if self.number in NUMBER_SPY:
             print('[  SPY ]', end='')
-        if self.number == NUMBER_SWITCH:
+        if self.number in NUMBER_SWITCH:
             print('[SWITCH]', end='')
 
 
@@ -415,7 +415,7 @@ class GameManager:
                           )
         console = Console()
         console.print(f'当前回合的玩家: {self.turnorder.current()}')
-        console.print(f'牌库顶: {self.discard[-1].number}  抽牌堆剩余: {len(self.draw)}  弃牌堆剩余: {len(self.discard)}')
+        console.print(f'弃牌堆顶: {self.discard[-1].number}  抽牌堆剩余: {len(self.draw)}  弃牌堆剩余: {len(self.discard)}')
         console.print(table)
         if msg is not None:
             self.update_last_info(msg)

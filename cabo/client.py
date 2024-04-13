@@ -76,8 +76,18 @@ class Client:
                                         param = input("请输入要交换的牌的编号: ")
                                         try:
                                             my = self.gm.players[self.username]
-                                            if int(param) < len(my.hand):
-                                                break
+                                            if ',' not in param:
+                                                if 0 <= int(param) < len(my.hand):
+                                                    break
+                                            else:
+                                                flag = True
+                                                for _num in param.split(','):
+                                                    if 0 <= int(_num) < len(my.hand):
+                                                        pass
+                                                    else:
+                                                        flag = False
+                                                if flag:
+                                                    break
                                         except Exception as ex:
                                             print(f'输入错误: {ex}')
                                     self.sendMessage(f'draw&change {param}')
@@ -86,36 +96,36 @@ class Client:
                                     self.sendMessage('draw&discard')
                                     break
                                 if message2 == 'use':
-                                    if card.number == NUMBER_peek:
+                                    if card.number in NUMBER_peek:
                                         while True:
                                             param = input("请输入要查看的牌的编号: ")
                                             try:
                                                 my = self.gm.players[self.username]
-                                                if int(param) < len(my.hand):
+                                                if 0 <= int(param) < len(my.hand):
                                                     break
                                             except Exception as ex:
                                                 print(f'输入错误: {ex}')
                                         self.sendMessage(f'draw&peek {param}')
                                         break
-                                    elif card.number == NUMBER_SPY:
+                                    elif card.number in NUMBER_SPY:
                                         while True:
                                             param = input("请输入要查看的玩家与牌的编号: ")
                                             try:
                                                 tar = param.split(':')[0]
                                                 num = param.split(':')[1]
                                                 player = self.gm.players[tar]
-                                                if int(num) < len(player.hand):
+                                                if 0 <= int(num) < len(player.hand):
                                                     break
                                             except Exception as ex:
                                                 print(f'输入错误: {ex}')
                                         self.sendMessage(f'draw&spy {param}')
                                         break
-                                    elif card.number == NUMBER_SWITCH:
+                                    elif card.number in NUMBER_SWITCH:
                                         while True:
                                             _param1 = input("请输入要交换的牌的编号: ")
                                             try:
                                                 my = self.gm.players[self.username]
-                                                if int(_param1) < len(my.hand):
+                                                if 0 <= int(_param1) < len(my.hand):
                                                     break
                                             except Exception as ex:
                                                 print(f'输入错误: {ex}')
@@ -125,7 +135,7 @@ class Client:
                                                 tar = _param2.split(':')[0]
                                                 num = _param2.split(':')[1]
                                                 player = self.gm.players[tar]
-                                                if int(num) < len(player.hand):
+                                                if 0 <= int(num) < len(player.hand):
                                                     break
                                             except Exception as ex:
                                                 print(f'输入错误: {ex}')
@@ -146,8 +156,18 @@ class Client:
                             index = input("请输入要交换的牌的编号: ")
                             try:
                                 my = self.gm.players[self.username]
-                                if int(index) < len(my.hand):
-                                    break
+                                if ',' not in index:
+                                    if 0 <= int(index) < len(my.hand):
+                                        break
+                                else:
+                                    flag = True
+                                    for num in index.split(','):
+                                        if 0 <= int(num) < len(my.hand):
+                                            pass
+                                        else:
+                                            flag = False
+                                    if flag:
+                                        break
                             except Exception as ex:
                                 print(f'输入错误: {ex}')
                         self.sendMessage(f'discard&draw {index}')
@@ -200,9 +220,9 @@ class Client:
                 _seed = msg['seed']
                 _order = msg['order']
                 _peek = msg['peek']
-                mask_peek = dict()
-                mask_peek[self.username] = _peek[self.username]
-                self.gm.new_round(_seed, _order, peek_dict=mask_peek)
+                # mask_peek = dict()
+                # mask_peek[self.username] = _peek[self.username]
+                self.gm.new_round(_seed, _order, peek_dict=_peek)
                 self.gm.refresh(username=self.username)
             elif resp.type == pb2.Broadcast.GAME_END:
                 self.gm.game_end()
