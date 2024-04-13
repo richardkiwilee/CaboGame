@@ -6,7 +6,7 @@ from enum import Enum
 from rich.table import Table
 from rich.console import Console
 import cabo.protocol.service_pb2 as pb2
-NUMBER_PEAK = 8
+NUMBER_peek = 8
 NUMBER_SPY = 9
 NUMBER_SWITCH = 10
 
@@ -23,7 +23,7 @@ class MainAction(Enum):
 class SubAction(Enum):
     DISCARD = 1
     CHANGE = 2      # 与自己交换
-    PEAK = 3
+    peek = 3
     SPY = 4
     SWITCH = 5      # 发动卡片效果与别人交换
 
@@ -34,16 +34,7 @@ class SCORE(Enum):
     SOMEONE_KAMIKAZE = 2
 
 
-class Color(Enum):
-    RED = 'red'
-    GREEN = 'green'
-    BLUE = 'blue'
-    YELLOW = 'yellow'
-    MAGENTA = 'magenta'
-    CYAN = 'cyan'
-
-
-COLOR_ORDER = [Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW, Color.MAGENTA, Color.CYAN]
+COLOR_ORDER = ['red', 'green', 'blue', 'yellow', 'megenta', 'cyan']
 
 
 def create_seed(players=4):
@@ -93,11 +84,11 @@ class Card:
         self.number = number
         # 0暗牌 1已偷看 2明牌
         self.face_up = False
-        self.peak = set()
+        self.peek = set()
 
-    def peaked_by(self, player):
-        if player not in self.peak:
-            self.peak.add(player)
+    def peeked_by(self, player):
+        if player not in self.peek:
+            self.peek.add(player)
 
     def to_json(self):
         return json.dumps(self.__dict__)
@@ -109,8 +100,8 @@ class Card:
 
     def print(self):
         print(f'{self.number}', end='')
-        if self.number == NUMBER_PEAK:
-            print('[ PEAK ]', end='')
+        if self.number == NUMBER_peek:
+            print('[ peek ]', end='')
         if self.number == NUMBER_SPY:
             print('[  SPY ]', end='')
         if self.number == NUMBER_SWITCH:
@@ -118,9 +109,10 @@ class Card:
 
 
 class Player:
-    def __init__(self, username: str, color: Color):
+    def __init__(self, username: str, color: str):
         self.username = username
         self.color = color
+        print(f'new player {username} color {color}')
         self.hand = []
         self.score = 0
         self.reborn = False  # 是否执行过reborn
@@ -189,30 +181,37 @@ class GameManager:
 
     def player_join(self, username):
         if username not in self.players.keys():
-            self.players[username] = Player(username, COLOR_ORDER.pop())
+            self.players[username] = Player(username, None)
             self.turnorder.AddPlayer(username)
 
     def player_exit(self, username):
         if username in self.players.keys():
-            COLOR_ORDER.append(self.players[username].color)
             self.players.pop(username)
             self.turnorder.RemovePlayer(username)
 
     def clear_score(self):
         for player in self.players.values():
             player.score = 0
-    def new_round(self, _seed, order: list):
+
+    def new_round(self, _seed, order: list, peek_dict: dict):
         self.game_status = GameStatus.PLAYING.value
         self.turnorder.turnorder = order
         deck = base64.b64decode(_seed)
         self.draw = [int(deck[i:i + 2]) for i in range(0, len(deck), 2)]
         self.discard = []
-        print('new round players:', self.players)
-        for username in self.turnorder.turnorder:
+        print(peek_dict)
+        for num in range(0, len(self.turnorder.turnorder)):
+            username = self.turnorder.turnorder[num]
             player = self.players[username]     # type: Player
+            player.color = COLOR_ORDER[num]
             player.reset()
             for i in range(0, 4):
                 player.AddCard(Card(self.draw.pop(0)))
+        for user in peek_dict.keys():
+            player = self.players[user]
+            for i in peek_dict[user]:
+                card = player.GetCard(i)
+                card.peeked_by(user)
         _first_discard = Card(self.draw.pop(0))
         _first_discard.face_up = True
         self.discard.append(_first_discard)
@@ -229,13 +228,13 @@ class GameManager:
         else:
             action = body
             param = ''
-        if action == 'draw&peak':
+        if action == 'draw&peek':
             top_card = Card(self.draw.pop(0))  # type: Card
             top_card.face_up = True
             self.discard.append(top_card)
             index = int(param)
             card = player.GetCard(index)
-            card.peaked_by(user)
+            card.peeked_by(user)
         if action == 'draw&spy':
             top_card = Card(self.draw.pop(0))  # type: Card
             top_card.face_up = True
@@ -244,7 +243,7 @@ class GameManager:
             target_index = int(param.split(':')[1])
             target_player = self.players[target_name]
             card = target_player.GetCard(target_index)
-            card.peaked_by(user)
+            card.peeked_by(user)
         if action == 'draw&switch':
             top_card = Card(self.draw.pop(0))  # type: Card
             top_card.face_up = True
@@ -260,7 +259,7 @@ class GameManager:
             player.SetCard(my_index, _)
         if action == 'draw&change':
             top_card = Card(self.draw.pop(0))  # type: Card
-            top_card.peaked_by(user)
+            top_card.peeked_by(user)
             if ',' not in param:
                 index = int(param)
                 card = player.GetCard(index)
@@ -331,14 +330,23 @@ class GameManager:
             if player.cabo:
                 return True
         return False
-    def rich_card(self, card: Card):
+    def rich_card(self, card: Card, _username=None):
         number = card.number
-        rich_str = '%2d' % number
+        if _username is None:
+            rich_str = '%02d' % number
+        else:
+            if _username in card.peek:
+                rich_str = '%02d' % number
+            else:
+                rich_str = '??'
         for username in self.turnorder.turnorder:
-            if username in card.peak:
-                rich_str += f'[bold on {self.players[username].color}] [/bold on {self.players[username].color}]'
+            if username == _username:
+                continue
+            if username in card.peek:
+                rich_str += f'[{self.players[username].color}]█[/{self.players[username].color}]'
             else:
                 rich_str += ' '
+        print('debug: ', rich_str)
         return rich_str
 
     def valid_action(self, request) -> bool:
@@ -359,7 +367,7 @@ class GameManager:
             user = self.turnorder.turnorder[index]
             player = self.players[user]     # type: Player
             if self.turnorder.current() == user:
-                rich_id = f'[bold on green]{_id}[/bold on green]'
+                rich_id = f'{_id}'
             else:
                 rich_id = f'{_id}'
             table.add_row(f'{rich_id}',
@@ -369,7 +377,7 @@ class GameManager:
         console = Console()
         console.print(table)
 
-    def refresh(self, msg=None):
+    def refresh(self, msg=None, username=None):
         if not _DEBUG:
             _ = os.system('cls')
         if self.game_status == GameStatus.LOBBY.value:
@@ -382,7 +390,6 @@ class GameManager:
         for i in range(max_hand):
             table.add_column(f'手牌{i}', justify='center')
         table.add_column(f'动态', justify='center', style='magenta')
-
         for index in range(0, len(self.turnorder.turnorder)):
             _id = index + 1
             user = self.turnorder.turnorder[index]
@@ -398,7 +405,7 @@ class GameManager:
             table.add_row(f'{rich_id}',
                           f'{rich_score}',
                           f'{player.rich_username()}',
-                          *[self.rich_card(card) if i < len(player.hand) else '' for i, card in enumerate(player.hand)],
+                          *[self.rich_card(card, username) if i < len(player.hand) else '' for i, card in enumerate(player.hand)],
                           f'{"CABO" if player.cabo else ""}'
                           )
         console = Console()
@@ -429,7 +436,7 @@ class GameManager:
             table.add_row(f'{_id}',
                           f'{rich_score}',
                           f'{player.rich_username()}',
-                          *[self.rich_card(card) if i < len(player.hand) else '' for i, card in enumerate(player.hand)],
+                          *[self.rich_card(card, _username=None) if i < len(player.hand) else '' for i, card in enumerate(player.hand)],
                           f'{"CABO" if player.cabo else ""}'
                           )
         console = Console()

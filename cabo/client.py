@@ -13,7 +13,7 @@ import json
 import os
 import cabo.protocol.service_pb2 as pb2
 import cabo.protocol.service_pb2_grpc as rpc
-from cabo.core import GameManager, Card, NUMBER_PEAK, NUMBER_SPY, NUMBER_SWITCH, GameStatus
+from cabo.core import GameManager, Card, NUMBER_peek, NUMBER_SPY, NUMBER_SWITCH, GameStatus
 
 
 class Client:
@@ -51,7 +51,7 @@ class Client:
                 if self.gm.game_status in (GameStatus.LOBBY.value, GameStatus.ROUND_GAP.value):
                     if action == 'cls':
                         _ = os.system('cls')
-                        self.gm.refresh()
+                        self.gm.refresh(username=self.username)
                     if action == 'ready':
                         self.sendMessage(action)
                     if action == 'start':
@@ -59,7 +59,7 @@ class Client:
                 if self.gm.game_status == GameStatus.PLAYING.value:
                     if action == 'cls':
                         _ = os.system('cls')
-                        self.gm.refresh()
+                        self.gm.refresh(username=self.username)
                     if action == 'draw':
                         # 从牌堆顶抽一张牌 选择操作
                         if self.gm.turnorder.current() != self.username:
@@ -81,9 +81,9 @@ class Client:
                                     self.sendMessage('draw&discard')
                                     break
                                 if message2 == 'use':
-                                    if card.number == NUMBER_PEAK:
+                                    if card.number == NUMBER_peek:
                                         param = input("请输入要查看的牌的编号: ")
-                                        self.sendMessage(f'draw&peak {param}')
+                                        self.sendMessage(f'draw&peek {param}')
                                         break
                                     elif card.number == NUMBER_SPY:
                                         param = input("请输入要查看的玩家与牌的编号: ")
@@ -118,7 +118,7 @@ class Client:
             except KeyboardInterrupt:
                 pass
             except Exception as ex:
-                self.gm.refresh()
+                self.gm.refresh(username=self.username)
                 print(f'Input Error: {ex}')
         print('exit')
     def __listen_for_messages(self):
@@ -155,8 +155,11 @@ class Client:
                 msg = json.loads(resp.msg)
                 _seed = msg['seed']
                 _order = msg['order']
-                self.gm.new_round(_seed, _order)
-                self.gm.refresh()
+                _peek = msg['peek']
+                mask_peek = dict()
+                mask_peek[self.username] = _peek[self.username]
+                self.gm.new_round(_seed, _order, peek_dict=mask_peek)
+                self.gm.refresh(username=self.username)
             elif resp.type == pb2.Broadcast.GAME_END:
                 self.gm.game_end()
             elif resp.type == pb2.Broadcast.ROUND_END:
@@ -164,11 +167,11 @@ class Client:
             elif resp.type == pb2.Broadcast.PLAYER_TURN:
                 print(f'{resp.msg}\'s turn.')
                 self.gm.turnorder.setCurrent(resp.msg)
-                self.gm.refresh()
+                self.gm.refresh(username=self.username)
             elif resp.type == pb2.Broadcast.PLAYER_ACTION:
                 print(f'{resp.name} do: {resp.msg}')
                 self.gm.handle(resp)
-                self.gm.refresh()
+                self.gm.refresh(username=self.username)
             else:
                 print(f'Unknown message: {resp}')
 

@@ -72,12 +72,18 @@ class CaboRoomServicer(rpc.CaboRoomServicer):
                 print('Seed:', _seed)
                 _order = self.gm.turnorder.shuffle()
                 print('Order:', _order)
-                self.gm.new_round(_seed.decode(), _order)
+                peek_dict = dict()
+                for user in caboroomUsers:
+                    peek_dict[user] = []
+                    while len(set(peek_dict[user])) < 2:
+                        _index = random.randint(0, 3)
+                        peek_dict[user].append(_index)
+                self.gm.new_round(_seed.decode(), _order, peek_dict)
                 self._putToQueues({
                     'type': pb2.Broadcast.NEW_ROUND,
                     'seq': 0,
                     'name': 'server',
-                    'msg': json.dumps({'seed': _seed.decode(), 'order': _order})
+                    'msg': json.dumps({'seed': _seed.decode(), 'order': _order, 'peek': peek_dict})
                 })
                 self._putToQueues({
                     'type': pb2.Broadcast.PLAYER_TURN,
