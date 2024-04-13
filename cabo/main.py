@@ -21,9 +21,15 @@ if __name__ == '__main__':
             server_thread = threading.Thread(target=serve, args=(_,))
             server_thread.start()
             while True:
-                username = input("输入用户名:")
-                if username != '':
-                    main('localhost', _, username)
+                try:
+                    username = input("输入用户名:")
+                    if username != '':
+                        try:
+                            main('localhost', _, username)
+                        except Exception as ex:
+                            pass
+                except Exception as ex:
+                    pass
         elif _.lower() == 'join':
             while True:
                 _ = input("输入(冒号分割) host:port\n")
@@ -33,9 +39,12 @@ if __name__ == '__main__':
                     host = _.split(':')[0]
                     port = _.split(':')[1]
                     while True:
-                        _ = input("输入用户名:")
-                        if _ != '':
-                            main(host, int(port), _)
+                        try:
+                            _ = input("输入用户名:")
+                            if _ != '':
+                                main(host, int(port), _)
+                        except Exception as ex:
+                            pass
                 except Exception as ex:
                     print(f'链接错误: {ex}')
                     continue

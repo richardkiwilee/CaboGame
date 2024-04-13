@@ -179,6 +179,7 @@ class GameManager:
         self.seq = 0        # 当前sequence
         self.discard = []   # 抽牌堆
         self.last_act = None
+        self.accept_ready_message = True
 
     def player_join(self, username):
         if username not in self.players.keys():
@@ -375,6 +376,8 @@ class GameManager:
                           )
         console = Console()
         console.print(table)
+        if all(self.ready_status.values()):
+            print('等待HOST开始游戏[start]...')
 
     def refresh(self, msg=None, username=None):
         if not _DEBUG:
@@ -512,6 +515,7 @@ class GameManager:
         for player in self.ready_status.keys():
             self.ready_status[player] = False
         print('print READY to next round...')
+        self.accept_ready_message = False
 
     def game_end(self):
         self.game_status = GameStatus.LOBBY.value
