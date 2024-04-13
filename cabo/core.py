@@ -428,10 +428,10 @@ class GameManager:
         user = msg.name
         action = msg.msg
         if action.startswith('draw&change'):
-            index = int(action.split(' ')[1])
+            index = action.split(' ')[1]
             self.last_act = f'{user}抽取了一张牌, 与自己的第 {index} 张卡交换'
         if action.startswith('draw&peek'):
-            index = int(action.split(' ')[1])
+            index = action.split(' ')[1]
             self.last_act = f'{user}抽取了一张牌, 偷看了自己的第 {index} 张卡'
         if action.startswith('draw&spy'):
             a = action.split(' ')[1]
