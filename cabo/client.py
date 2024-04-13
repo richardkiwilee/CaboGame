@@ -30,7 +30,6 @@ class Client:
             return
         self.gm.player_join(self.username)
         self.gm.ready_status = json.loads(registerResp.msg)
-        print(self.gm.ready_status)
         for player in self.gm.ready_status:
             if player not in self.gm.players.keys():
                 self.gm.player_join(player)
@@ -68,7 +67,7 @@ class Client:
                         card = Card(self.gm.draw[0])       # type: Card
                         print(f"抽到的牌是: ", end="")
                         card.print()
-                        print("请选择操作: change, discard, use", end="")
+                        print("请选择操作[change/discard/use]: ", end="")
                         while True:
                             try:
                                 message2 = input("").lower()
@@ -91,7 +90,7 @@ class Client:
                                         break
                                     elif card.number == NUMBER_SWITCH:
                                         _param1 = input("请输入要交换的牌的编号: ")
-                                        _param2 = input("请输入要交换的玩家与牌的编号: ")
+                                        _param2 = input("请输入要交换的玩家与牌的编号[name:id]: ")
                                         param = f'{_param1},{_param2}'
                                         self.sendMessage(f'draw&switch {param}')
                                         break
@@ -120,7 +119,7 @@ class Client:
             except Exception as ex:
                 self.gm.refresh(username=self.username)
                 print(f'Input Error: {ex}')
-        print('exit')
+
     def __listen_for_messages(self):
         # 从服务器接收新消息并显示
         subscribeResps = self.stub.Subscribe(pb2.GeneralRequest(name=self.username))
@@ -129,6 +128,7 @@ class Client:
             print('Failed to subscribe game.')
             return
         print('Successfully joined the game.')
+        self.gm.refresh_ready()
         for resp in subscribeResps:
             if resp.type == pb2.Broadcast.UNSPECIFIED:
                 print(f'Unspecified: {resp.msg}')
@@ -171,7 +171,7 @@ class Client:
             elif resp.type == pb2.Broadcast.PLAYER_ACTION:
                 print(f'{resp.name} do: {resp.msg}')
                 self.gm.handle(resp)
-                self.gm.refresh(username=self.username)
+                self.gm.refresh(msg=resp, username=self.username)
             else:
                 print(f'Unknown message: {resp}')
 
@@ -180,11 +180,10 @@ class Client:
         print(resp.msg)
 
 
-def main(argv=None):
-    address = '127.0.0.1'
-    port = 50051
+def main(address='localhost', port=50051, username=None):
     chars = string.ascii_letters
-    username = ''.join(random.choice(chars) for _ in range(5))
+    if username is None:
+        username = ''.join(random.choice(chars) for _ in range(5))
     client = Client(username, address, port)
     try:
         while True:

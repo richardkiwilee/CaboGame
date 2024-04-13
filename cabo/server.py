@@ -39,15 +39,14 @@ class CaboRoomServicer(rpc.CaboRoomServicer):
             'type': pb2.Broadcast.USER_JOIN,
             'name': cname
         })
-
-        print('User [{}] registered.'.format(cname))
+        # print('User [{}] registered.'.format(cname))
         self.gm.player_join(cname)
         self.gm.ready_status[cname] = False
-        print('return ready_status:', self.gm.ready_status)
+        # print('return ready_status:', self.gm.ready_status)
         return pb2.GeneralResponse(ok=True, name=cname, msg=json.dumps(self.gm.ready_status))
 
     def Handle(self, request, context):
-        print('User [{}] sent message: {}'.format(request.name, request.msg))
+        # print('User [{}] sent message: {}'.format(request.name, request.msg))
         if not self._isAuthorized(request):
             return pb2.GeneralResponse(ok=False, msg='Not authorized')
         if len(request.msg.strip()) == 0:
@@ -66,12 +65,12 @@ class CaboRoomServicer(rpc.CaboRoomServicer):
                         'name': 'server',
                         'seq': 0
                     })
-                print('Game started')
+                # print('Game started')
                 self.gm.game_status = GameStatus.PLAYING.value
                 _seed = create_seed(len(caboroomUsers))
-                print('Seed:', _seed)
+                # print('Seed:', _seed)
                 _order = self.gm.turnorder.shuffle()
-                print('Order:', _order)
+                # print('Order:', _order)
                 peek_dict = dict()
                 for user in caboroomUsers:
                     peek_dict[user] = []
@@ -104,7 +103,7 @@ class CaboRoomServicer(rpc.CaboRoomServicer):
         elif self.gm.game_status == GameStatus.PLAYING.value:
             if self.gm.turnorder.current() != request.name:
                 return pb2.GeneralResponse(ok=False, msg='Not your turn')
-            print('receive request:', request)
+            # print('receive request:', request)
             if self.gm.valid_action(request):
                 self.gm.handle(request)
                 curUser = caboroomUsers[request.name]
@@ -122,7 +121,7 @@ class CaboRoomServicer(rpc.CaboRoomServicer):
                         'name': 'server',
                         'msg': self.gm.turnorder.current()
                     })
-                    print('next turn:', self.gm.turnorder.current())
+                    # print('next turn:', self.gm.turnorder.current())
                 else:
                     self.gm.round_end()
                     if not self.gm.check_game_finish():
@@ -132,7 +131,7 @@ class CaboRoomServicer(rpc.CaboRoomServicer):
                             'name': 'server',
                             'msg': ''
                         })
-                        print('round end')
+                        # print('round end')
                     else:
                         self.gm.game_end()
                         self._putToQueues({
@@ -141,7 +140,7 @@ class CaboRoomServicer(rpc.CaboRoomServicer):
                             'name': 'server',
                             'msg': ''
                         })
-                        print('game end')
+                        # print('game end')
                         self.gm.clear_score()
                 return pb2.GeneralResponse(ok=True, msg='OK')
             else:
@@ -157,7 +156,8 @@ class CaboRoomServicer(rpc.CaboRoomServicer):
         cb_added = context.add_callback(self._onDisconnectWrapper(request, context))
 
         if not cb_added:
-            print('Warning: disconnection will not be called')
+            # print('Warning: disconnection will not be called')
+            pass
 
         q = queue.Queue()
         queues.append(q)
@@ -185,7 +185,7 @@ class CaboRoomServicer(rpc.CaboRoomServicer):
         # Be careful! The error here is silently ignored!
         def callback():
             curUser = request.name
-            print('User [{}] disconnected.'.format(curUser['name']))
+            # print('User [{}] disconnected.'.format(curUser['name']))
             self._putToQueues({
                 'type': pb2.Broadcast.USER_LEAVE,
                 'name': curUser['name']
@@ -195,17 +195,17 @@ class CaboRoomServicer(rpc.CaboRoomServicer):
         return callback
 
 
-def serve():
+def serve(port=50051):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=8))
     rpc.add_CaboRoomServicer_to_server(CaboRoomServicer(), server)
-    server.add_insecure_port('[::]:50051')
+    server.add_insecure_port(f'[::]:{port}')
     server.start()
-    print('>>> Server started')
+    # print('>>> Server started')
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print('>>> Exiting')
+        # print('>>> Exiting')
         # to unblock all queues
         for q in queues:
             q.put(None)

@@ -10,7 +10,9 @@ NUMBER_peek = 8
 NUMBER_SPY = 9
 NUMBER_SWITCH = 10
 
-_DEBUG = True
+_DEBUG = False
+
+
 class MainAction(Enum):
     SYSTEM = 0
     DRAW = 1
@@ -72,7 +74,6 @@ class PlayerTurnOrder:
             self.index = 0
         else:
             self.index += 1
-        print('next index:', self.index)
         return self.turnorder[self.index]
 
     def current(self) -> str:
@@ -112,7 +113,6 @@ class Player:
     def __init__(self, username: str, color: str):
         self.username = username
         self.color = color
-        print(f'new player {username} color {color}')
         self.hand = []
         self.score = 0
         self.reborn = False  # 是否执行过reborn
@@ -178,6 +178,7 @@ class GameManager:
         self.draw = []      # 抽牌堆
         self.seq = 0        # 当前sequence
         self.discard = []   # 抽牌堆
+        self.last_act = None
 
     def player_join(self, username):
         if username not in self.players.keys():
@@ -194,12 +195,12 @@ class GameManager:
             player.score = 0
 
     def new_round(self, _seed, order: list, peek_dict: dict):
+        self.last_act = None
         self.game_status = GameStatus.PLAYING.value
         self.turnorder.turnorder = order
         deck = base64.b64decode(_seed)
         self.draw = [int(deck[i:i + 2]) for i in range(0, len(deck), 2)]
         self.discard = []
-        print(peek_dict)
         for num in range(0, len(self.turnorder.turnorder)):
             username = self.turnorder.turnorder[num]
             player = self.players[username]     # type: Player
@@ -218,7 +219,6 @@ class GameManager:
 
     def handle(self, message):
         # 只处理handle_action
-        print(f'receive {message}')
         user = message.name
         body = message.msg
         player = self.players[user]
@@ -333,10 +333,13 @@ class GameManager:
     def rich_card(self, card: Card, _username=None):
         number = card.number
         if _username is None:
-            rich_str = '%02d' % number
+            rich_str = '%2d' % number
         else:
+            if card.face_up:
+                rich_str = '%2d' % number
+                return rich_str
             if _username in card.peek:
-                rich_str = '%02d' % number
+                rich_str = '%2d' % number
             else:
                 rich_str = '??'
         for username in self.turnorder.turnorder:
@@ -344,9 +347,6 @@ class GameManager:
                 continue
             if username in card.peek:
                 rich_str += f'[{self.players[username].color}]█[/{self.players[username].color}]'
-            else:
-                rich_str += ' '
-        print('debug: ', rich_str)
         return rich_str
 
     def valid_action(self, request) -> bool:
@@ -357,7 +357,6 @@ class GameManager:
     def refresh_ready(self):
         if not _DEBUG:
             _ = os.system('cls')
-        print('ready status', self.ready_status)
         table = Table()
         table.add_column('Id', justify='center')
         table.add_column('用户名', justify='center')
@@ -402,14 +401,55 @@ class GameManager:
                 rich_score = f'[bold on red]{player.score}[/bold on red]'
             else:
                 rich_score = f'{player.score}'
+            rich_row = [self.rich_card(card, username) if i < len(player.hand) else '' for i, card in enumerate(player.hand)]
+            if len(rich_row) < max_hand:
+                rich_row += ['' for _ in range(max_hand - len(rich_row))]
             table.add_row(f'{rich_id}',
                           f'{rich_score}',
                           f'{player.rich_username()}',
-                          *[self.rich_card(card, username) if i < len(player.hand) else '' for i, card in enumerate(player.hand)],
+                          *rich_row,
                           f'{"CABO" if player.cabo else ""}'
                           )
         console = Console()
+        console.print(f'当前回合的玩家: {self.turnorder.current()}')
+        console.print(f'牌库顶: {self.discard[-1].number}  抽牌堆剩余: {len(self.draw)}  弃牌堆剩余: {len(self.discard)}')
         console.print(table)
+        if msg is not None:
+            self.update_last_info(msg)
+        if self.last_act is not None:
+            console.print(f'{self.last_act}')
+        if self.turnorder.current() == username:
+            print(f'我的回合[draw/dd/cabo]:')
+
+    def update_last_info(self, msg):
+        user = msg.name
+        action = msg.msg
+        if action.startswith('draw&change'):
+            index = int(action.split(' ')[1])
+            self.last_act = f'{user}抽取了一张牌, 与自己的第 {index} 张卡交换'
+        if action.startswith('draw&peek'):
+            index = int(action.split(' ')[1])
+            self.last_act = f'{user}抽取了一张牌, 偷看了自己的第 {index} 张卡'
+        if action.startswith('draw&spy'):
+            a = action.split(' ')[1]
+            t = a.split(':')[0]
+            index = a.split(':')[1]
+            self.last_act = f'{user}抽取了一张牌, 偷看了 {t} 的第 {index} 张卡'
+        if action.startswith('draw&switch'):
+            a = action.split(' ')[1]
+            _my = a.split(',')[0]
+            _other = a.split(',')[1]
+            t = _other.split(':')[0]
+            index = _other.split(':')[1]
+            self.last_act = f'{user}抽取了一张牌, 将自己的第 {_my} 张卡与 {t} 的第 {index} 张卡进行了交换'
+        if action.startswith('draw&discard'):
+            self.last_act = f'{user}抽取了一张牌, 然后弃掉了它'
+        if action.startswith('discard&draw'):
+            index = action.split(' ')[1]
+            self.last_act = f'{user}从弃牌堆抽取了一张牌, 与自己的第 {index} 张卡交换'
+        if action.startswith('cabo'):
+            self.last_act = f'{user}呼唤了CABO'
+
 
     def print_score(self):
         if not _DEBUG:
@@ -433,10 +473,13 @@ class GameManager:
                 rich_score = f'{player.score}'
             user = self.turnorder.turnorder[index]
             player = self.players[user]     # type: Player
+            rich_row = [self.rich_card(card, None) if i < len(player.hand) else '' for i, card in enumerate(player.hand)]
+            if len(rich_row) < max_hand:
+                rich_row += ['' for _ in range(max_hand - len(rich_row))]
             table.add_row(f'{_id}',
                           f'{rich_score}',
                           f'{player.rich_username()}',
-                          *[self.rich_card(card, _username=None) if i < len(player.hand) else '' for i, card in enumerate(player.hand)],
+                          *rich_row,
                           f'{"CABO" if player.cabo else ""}'
                           )
         console = Console()
