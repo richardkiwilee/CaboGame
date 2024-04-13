@@ -51,16 +51,16 @@ class Client:
                     if action == 'cls':
                         _ = os.system('cls')
                         self.gm.refresh(username=self.username)
-                    if action == 'ready':
+                    if action == 'ready' or action == 'r':
                         self.gm.accept_ready_message = True
                         self.sendMessage(action)
-                    if action == 'start':
+                    if action == 'start' or action == 's':
                         self.sendMessage(action)
                 if self.gm.game_status == GameStatus.PLAYING.value:
                     if action == 'cls':
                         _ = os.system('cls')
                         self.gm.refresh(username=self.username)
-                    if action == 'draw':
+                    if action == 'draw' or action == 'dr':
                         # 从牌堆顶抽一张牌 选择操作
                         if self.gm.turnorder.current() != self.username:
                             print('Not your turn')
@@ -71,7 +71,7 @@ class Client:
                         while True:
                             try:
                                 message2 = input("请选择操作[change/discard/use]: ").lower()
-                                if message2 == 'change':
+                                if message2 == 'change' or message2 == 'c':
                                     while True:
                                         param = input("请输入要交换的牌的编号: ")
                                         try:
@@ -92,10 +92,10 @@ class Client:
                                             print(f'输入错误: {ex}')
                                     self.sendMessage(f'draw&change {param}')
                                     break
-                                if message2 == 'discard':
+                                if message2 == 'discard' or message2 == 'd':
                                     self.sendMessage('draw&discard')
                                     break
-                                if message2 == 'use':
+                                if message2 == 'use' or message2 == 'u':
                                     if card.number in NUMBER_peek:
                                         while True:
                                             param = input("请输入要查看的牌的编号: ")

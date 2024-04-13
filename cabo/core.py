@@ -323,7 +323,7 @@ class GameManager:
             player.cabo = True
         self.refresh()
         next_player = self.players[self.turnorder.next()]
-        if next_player.cabo:
+        if next_player.cabo or len(self.draw) == 0:
             self.game_status = GameStatus.ROUND_GAP.value
 
     def someoneCaboed(self):
@@ -337,7 +337,7 @@ class GameManager:
             rich_str = '%2d' % number
         else:
             if card.face_up:
-                rich_str = '%2d' % number
+                rich_str = '[%2d]' % number
                 return rich_str
             if _username in card.peek:
                 rich_str = '%2d' % number
