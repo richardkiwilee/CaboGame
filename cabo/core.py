@@ -47,6 +47,8 @@ def create_seed(players=4):
     if 4 < players <= 8:
         deck = deck * 2
     random.shuffle(deck)
+    if _DEBUG:
+        deck = [0,0,0,0,0,0,0,0,0,0,0,0,0]
     _ = ''.join(['%02d' % i for i in deck])
     return base64.b64encode(_.encode('utf-8'))
 
@@ -157,7 +159,8 @@ class Player:
         if status == SCORE.SOMEONE_KAMIKAZE:
             self.score += 50
         if status == SCORE.WIN:
-            pass
+            if not self.cabo:
+                self.score += sum([card.number for card in self.hand] + [0])
         if self.score == 100:
             self.score = 50
             self.reborn = True
@@ -289,6 +292,9 @@ class GameManager:
                         _card = player.GetCard(index)
                         _card.face_up = True
                     player.AddCard(top_card)
+                    if len(indexes) >= 3:
+                        punish = Card(self.draw.pop(0))
+                        player.AddCard(punish)
         if action == 'draw&discard':
             top_card = Card(self.draw.pop(0))  # type: Card
             top_card.face_up = True
@@ -496,9 +502,9 @@ class GameManager:
         tmp = [player.username for player in self.players.values() if player.IsKamikaze()]
         if not tmp:
             tmp = {player.username: player.GetHandScore() for player in self.players.values()}
-            winner = min(tmp, key=tmp.get)
+            winners = [player.username for player in self.players.values() if (player.GetHandScore() == min(tmp, key=tmp.get))]
             for player in self.players.values():
-                if player.username == winner:
+                if player.username in winners:
                     player.UpdateScore(SCORE.WIN)
                 else:
                     player.UpdateScore(SCORE.LOSE)
